@@ -27,7 +27,7 @@ import sys
 import RPi.GPIO as GPIO
 import time
 
-toDisplay="2536" # numbers and digits to display
+toDisplay="15°C" # numbers and digits to display
 
 delay = 0.005 # delay between digits refresh
 
@@ -70,9 +70,11 @@ arrSeg = [[0,0,0,0,0,0,1],\
           [0,1,0,0,0,0,0],\
           [0,0,0,1,1,1,1],\
           [0,0,0,0,0,0,0],\
-          [0,0,0,0,1,0,0]]
+          [0,0,0,0,1,0,0],\
+	  [0,0,1,1,1,0,0],\
+	  [0,1,1,0,0,0,1]]
 
-GPIO.output(digitDP,0)# DOT pin
+GPIO.output(digitDP,0) # DOT pin
 
 # --------------------------------------------------------------------
 # MAIN FUNCTIONS
@@ -89,6 +91,14 @@ def showDisplay(digit):
   GPIO.output(selDigit, sel) # activates selected digit
   if digit[i].replace(".", "") == " ": # space disables digit
    GPIO.output(display_list,0)
+   continue
+  if digit[i] == "°":
+   GPIO.output(display_list,arrSeg[10])
+   time.sleep(delay)
+   continue
+  if digit[i] == "C":
+   GPIO.output(display_list,arrSeg[11])
+   time.sleep(delay)
    continue
   numDisplay = int(digit[i].replace(".", ""))
   GPIO.output(display_list, arrSeg[numDisplay]) # segments are activated according to digit mapping
@@ -114,7 +124,7 @@ def splitToDisplay (toDisplay): # splits string to digits to display
 # --------------------------------------------------------------------
 
 try:
- while True:   
+ while True:
   showDisplay(splitToDisplay(toDisplay))
 except KeyboardInterrupt:
  print('interrupted!')
