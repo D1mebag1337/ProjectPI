@@ -25,11 +25,34 @@
 # Import required libraries
 import sys
 import RPi.GPIO as GPIO
+import Adafruit_DHT
 import time
 
-toDisplay="15°C" # numbers and digits to display
+######### GPIO setup ##########
 
-delay = 0.005 # delay between digits refresh
+# Use BCM GPIO references instead of physical pin numbers
+GPIO.setmode(GPIO.BCM)
+
+# Temperatursensor
+DHT_SENSOR = Adafruit_DHT.DHT11
+DHT_PIN = 4
+
+# Bodenfeuchtigkeitssensor
+data = 21
+green = 6
+red = 19
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(data, GPIO.IN)
+GPIO.setup(red, GPIO.OUT)
+GPIO.setup(green, GPIO.OUT)
+
+GPIO.output(green,GPIO.LOW)
+GPIO.output(red,GPIO.LOW)
+
+# Sieben-Segment-Anzeige
+
+delay = 0.0005 # delay between digits refresh
 
 # --------------------------------------------------------------------
 # PINS MAPPING AND SETUP
@@ -46,9 +69,6 @@ display_list = [24,25,10,9,26,12,16] # define GPIO ports to use
 
 digitDP = 20
 #DOT = GPIO 20
-
-# Use BCM GPIO references instead of physical pin numbers
-GPIO.setmode(GPIO.BCM)
 
 # Set all pins as output
 GPIO.setwarnings(False)
@@ -71,8 +91,8 @@ arrSeg = [[0,0,0,0,0,0,1],\
           [0,0,0,1,1,1,1],\
           [0,0,0,0,0,0,0],\
           [0,0,0,0,1,0,0],\
-	  [0,0,1,1,1,0,0],\
-	  [0,1,1,0,0,0,1]]
+	        [0,0,1,1,1,0,0],\
+	        [0,1,1,0,0,0,1]]
 
 GPIO.output(digitDP,0) # DOT pin
 
@@ -83,6 +103,21 @@ GPIO.output(digitDP,0) # DOT pin
 # showDisplay(array) activates DIGITS according to array. An array
 #   element to space means digit deactivation
 # --------------------------------------------------------------------
+def getTemperature():
+    humidity, temperature = Adafruit_DHT.read(DHT_SENSOR, DHT_PIN)
+    if humidity is not None and temperature is not None:
+      temperature = str(round(temperature)) + "°C"
+    else:
+        temperature = "0000"
+    return temperature
+
+def getMoistureData():
+    if GPIO.input(data):
+        GPIO.output(green, GPIO.LOW) #bei keinem Wasser geht Grün aus
+        GPIO.output(red, GPIO.HIGH) #und Rot leuchtet
+    else:
+        GPIO.output(green, GPIO.HIGH) #bei Wasser geht Grün an
+        GPIO.output(red, GPIO.LOW) #und Rot geht aus
 
 def showDisplay(digit):
  for i in range(0, 4): #loop on 4 digits selectors (from 0 to 3 included)
@@ -115,6 +150,7 @@ def splitToDisplay (toDisplay): # splits string to digits to display
  while "." in arrToDisplay: arrToDisplay.remove(".") # array items containing dot char alone are removed
  return arrToDisplay
 
+
 # --------------------------------------------------------------------
 # MAIN LOOP
 # persistence of vision principle requires that digits are powered
@@ -124,10 +160,16 @@ def splitToDisplay (toDisplay): # splits string to digits to display
 # --------------------------------------------------------------------
 
 try:
- while True:
-  showDisplay(splitToDisplay(toDisplay))
+  while True:
+    GPIO.output(selDigit, [0,0,0,0])
+    t_end = time.time() + 10
+    toDisplay = getTemperature()
+    while time.time() < t_end:
+      getMoistureData()
+      showDisplay(splitToDisplay(toDisplay)) 
 except KeyboardInterrupt:
- print('interrupted!')
- GPIO.cleanup()
+  print('interrupted!')
+  GPIO.output(selDigit, [0,0,0,0])
+  GPIO.cleanup()
 sys.exit()
 
